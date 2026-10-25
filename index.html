@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Drama AI Agent</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #10121b;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .app {
+      max-width: 500px;
+      margin: 20px auto;
+      padding: 22px;
+      background: #1b1e2b;
+      border-radius: 18px;
+    }
+    h1 { color: #b8a0ff; font-size: 25px; }
+    p { color: #c5c7d3; line-height: 1.6; }
+    label { display: block; margin-top: 18px; }
+    input, textarea, select, button {
+      width: 100%;
+      margin-top: 9px;
+      padding: 12px;
+      border-radius: 9px;
+      border: 1px solid #45485b;
+      background: #282c3c;
+      color: white;
+      font-size: 15px;
+    }
+    button {
+      background: #8064ed;
+      border: none;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    #status { color: #c7baff; overflow-wrap: anywhere; }
+    .note { font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>🎬 K-Drama AI Agent</h1>
+    <p>বাংলায় Drama Explain ভিডিও তৈরির প্রথম ধাপ।</p>
+
+    <label for="video">১. Drama episode নির্বাচন কর</label>
+    <input id="video" type="file" accept="video/*">
+
+    <label for="duration">২. ভিডিও কত মিনিটের হবে?</label>
+    <select id="duration">
+      <option value="12">১২ মিনিট</option>
+      <option value="13">১৩ মিনিট</option>
+      <option value="15">১৫ মিনিট</option>
+    </select>
+
+    <label for="voice">৩. AI Voice</label>
+    <select id="voice">
+      <option value="female-bangla">মেয়েদের বাংলা ভয়েস</option>
+    </select>
+
+    <label for="instructions">৪. কীভাবে ভিডিও বানাতে চাস?</label>
+    <textarea id="instructions" rows="4"
+      placeholder="যেমন: সহজ বাংলায় গল্প বুঝিয়ে বলবে, গুরুত্বপূর্ণ ঘটনা রাখবে..."></textarea>
+
+    <button id="start">ভিডিও তৈরির জন্য প্রস্তুত কর</button>
+    <p id="status">এখনও কোনো ভিডিও নির্বাচন করা হয়নি।</p>
+    <p class="note">এটি প্রাথমিক ডেমো। এখনো AI script, voice বা MP4 তৈরি করে না।</p>
+  </main>
+
+  <script>
+    const video = document.getElementById("video");
+    const status = document.getElementById("status");
+
+    video.addEventListener("change", () => {
+      const file = video.files[0];
+      status.textContent = file
+        ? "নির্বাচিত ভিডিও: " + file.name +
+          " (" + (file.size / (1024 * 1024)).toFixed(1) + " MB)"
+        : "এখনও কোনো ভিডিও নির্বাচন করা হয়নি।";
+    });
+
+    document.getElementById("start").addEventListener("click", () => {
+      if (!video.files.length) {
+        status.textContent = "আগে একটি ভিডিও নির্বাচন কর।";
+        return;
+      }
+      status.textContent =
+        "ভিডিও নির্বাচন হয়েছে। AI processing চালু করতে পরবর্তী ধাপে backend যোগ করতে হবে।";
+    });
+  </script>
+</body>
+</html>
