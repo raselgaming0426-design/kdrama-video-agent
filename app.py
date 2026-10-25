@@ -24,6 +24,7 @@ class Handler(BaseHTTPRequestHandler):
         )
 
 if __name__ == "__main__":
-    server = HTTPServer(("0.0.0.0", 8000), Handler)
-    print("K-Drama AI Agent backend started on port 8000")
+    port = int(os.environ.get("PORT", 8000))
+    server = HTTPServer(("0.0.0.0", port), Handler)
+    print(f"K-Drama AI Agent backend started on port {port}")
     server.serve_forever()
