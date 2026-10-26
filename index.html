@@ -5,93 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>K-Drama AI Agent</title>
   <style>
-    * { box-sizing: border-box; }
     body {
-      margin: 0;
-      padding: 20px;
-      background: #10121b;
-      color: white;
       font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      color: #222;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
     }
-    .app {
-      max-width: 500px;
-      margin: 20px auto;
-      padding: 22px;
-      background: #1b1e2b;
-      border-radius: 18px;
+    .panel {
+      background: white;
+      padding: 20px;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px #0001;
     }
-    h1 { color: #b8a0ff; font-size: 25px; }
-    p { color: #c5c7d3; line-height: 1.6; }
-    label { display: block; margin-top: 18px; }
-    input, textarea, select, button {
+    h1 { color: #6d28d9; }
+    label { display: block; margin-top: 18px; font-weight: bold; }
+    input, select, button {
       width: 100%;
-      margin-top: 9px;
+      box-sizing: border-box;
+      margin-top: 8px;
       padding: 12px;
-      border-radius: 9px;
-      border: 1px solid #45485b;
-      background: #282c3c;
-      color: white;
-      font-size: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
     }
     button {
-      background: #8064ed;
+      background: #6d28d9;
+      color: white;
       border: none;
-      font-weight: bold;
+      font-size: 16px;
       margin-top: 20px;
     }
-    #status { color: #c7baff; overflow-wrap: anywhere; }
-    .note { font-size: 13px; }
+    .note { color: #555; font-size: 14px; line-height: 1.5; }
   </style>
 </head>
 <body>
-  <main class="app">
-    <h1>🎬 K-Drama AI Agent</h1>
-    <p>বাংলায় Drama Explain ভিডিও তৈরির প্রথম ধাপ।</p>
+  <div class="panel">
+    <h1>K-Drama AI Agent</h1>
+    <p>Drama video ও Bangla voice বেছে নাও।</p>
 
-    <label for="video">১. Drama episode নির্বাচন কর</label>
+    <label for="video">1. Drama Video</label>
     <input id="video" type="file" accept="video/*">
 
-    <label for="duration">২. ভিডিও কত মিনিটের হবে?</label>
+    <label for="voice">2. Bangla Voice (MP3/WAV)</label>
+    <input id="voice" type="file" accept="audio/mpeg,audio/wav,audio/*">
+
+    <label for="duration">Target Video Duration</label>
     <select id="duration">
-      <option value="12">১২ মিনিট</option>
-      <option value="13">১৩ মিনিট</option>
-      <option value="15">১৫ মিনিট</option>
+      <option value="12">12 minutes</option>
+      <option value="13" selected>13 minutes</option>
+      <option value="15">15 minutes</option>
     </select>
 
-    <label for="voice">৩. AI Voice</label>
-    <select id="voice">
-      <option value="female-bangla">মেয়েদের বাংলা ভয়েস</option>
-    </select>
+    <label for="instructions">Extra Instructions (optional)</label>
+    <input id="instructions" type="text" placeholder="যেমন: শুধু main story রাখবে">
 
-    <label for="instructions">৪. কীভাবে ভিডিও বানাতে চাস?</label>
-    <textarea id="instructions" rows="4"
-      placeholder="যেমন: সহজ বাংলায় গল্প বুঝিয়ে বলবে, গুরুত্বপূর্ণ ঘটনা রাখবে..."></textarea>
-
-    <button id="start">ভিডিও তৈরির জন্য প্রস্তুত কর</button>
-    <p id="status">এখনও কোনো ভিডিও নির্বাচন করা হয়নি।</p>
-    <p class="note">এটি প্রাথমিক ডেমো। এখনো AI script, voice বা MP4 তৈরি করে না।</p>
-  </main>
+    <button type="button" onclick="checkFiles()">Check Selected Files</button>
+    <p id="status" class="note">এখনো কোনো ফাইল নির্বাচন করা হয়নি।</p>
+    <p class="note">নোট: আপাতত ফাইল বেছে নেওয়া ও যাচাই করার ডেমো। এখনো ভিডিও এডিট বা MP4 export করে না।</p>
+  </div>
 
   <script>
-    const video = document.getElementById("video");
-    const status = document.getElementById("status");
+    function checkFiles() {
+      const video = document.getElementById('video').files[0];
+      const voice = document.getElementById('voice').files[0];
+      const status = document.getElementById('status');
 
-    video.addEventListener("change", () => {
-      const file = video.files[0];
-      status.textContent = file
-        ? "নির্বাচিত ভিডিও: " + file.name +
-          " (" + (file.size / (1024 * 1024)).toFixed(1) + " MB)"
-        : "এখনও কোনো ভিডিও নির্বাচন করা হয়নি।";
-    });
-
-    document.getElementById("start").addEventListener("click", () => {
-      if (!video.files.length) {
-        status.textContent = "আগে একটি ভিডিও নির্বাচন কর।";
+      if (!video || !voice) {
+        status.textContent = 'দয়া করে Drama Video এবং Bangla Voice—দুটিই নির্বাচন করো।';
         return;
       }
+
       status.textContent =
-        "ভিডিও নির্বাচন হয়েছে। AI processing চালু করতে পরবর্তী ধাপে backend যোগ করতে হবে।";
-    });
+        'ফাইল নির্বাচন হয়েছে! Video: ' + video.name +
+        ' | Voice: ' + voice.name +
+        ' | Duration: ' + document.getElementById('duration').value +
+        ' মিনিট। এখনো সার্ভারে আপলোড হয়নি।';
+    }
   </script>
 </body>
 </html>
