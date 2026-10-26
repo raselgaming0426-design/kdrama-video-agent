@@ -72,15 +72,13 @@ async function checkFiles() {
   const status = document.getElementById('status');
 
   if (!video || !voice) {
-    status.textContent =
-      'দয়া করে ভিডিও এবং বাংলা ভয়েস—দুটিই নির্বাচন করো।';
+    status.textContent = 'ভিডিও এবং বাংলা ভয়েস—দুটিই নির্বাচন করো।';
     return;
   }
 
   if (video.size > 100 * 1024 * 1024 ||
       voice.size > 100 * 1024 * 1024) {
-    status.textContent =
-      'পরীক্ষার জন্য ১০০ MB-এর কম ফাইল ব্যবহার করো।';
+    status.textContent = 'প্রতিটি ফাইল ১০০ MB-এর মধ্যে রাখো।';
     return;
   }
 
@@ -88,29 +86,35 @@ async function checkFiles() {
   formData.append('video', video);
   formData.append('voice', voice);
 
-  status.textContent = 'সার্ভারের সঙ্গে সংযোগ হচ্ছে...';
+  status.textContent = 'ভিডিও তৈরি হচ্ছে। অপেক্ষা করো...';
 
   try {
     const response = await fetch(
       'https://kdrama-video-agent.onrender.com/upload',
-      {
-        method: 'POST',
-        body: formData
-      }
+      { method: 'POST', body: formData }
     );
 
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.error || 'আপলোড সফল হয়নি।');
+      throw new Error(result.error || 'ভিডিও তৈরি হয়নি।');
     }
 
-    status.textContent =
-      'ফাইল আপলোড সফল হয়েছে! ভিডিও এডিটিং ফিচার এখনো তৈরি করা বাকি।';
+    const downloadUrl =
+      'https://kdrama-video-agent.onrender.com' +
+      result.download_url;
+
+    status.replaceChildren();
+    status.append(document.createTextNode('ভিডিও তৈরি হয়েছে! '));
+
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.textContent = 'MP4 ভিডিও ডাউনলোড করো';
+    link.download = 'kdrama_explainer.mp4';
+    status.append(link);
 
   } catch (error) {
-    status.textContent =
-      'আপলোড ব্যর্থ হয়েছে: ' + error.message;
+    status.textContent = 'সমস্যা: ' + error.message;
   }
 }
 </script>
