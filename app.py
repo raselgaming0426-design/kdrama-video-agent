@@ -2,8 +2,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 import os
 import tempfile
-import cgi
 import uuid
+import re
 
 UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "kdrama_uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -15,10 +15,10 @@ class Handler(BaseHTTPRequestHandler):
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
 
@@ -31,8 +31,7 @@ class Handler(BaseHTTPRequestHandler):
             "status": "Backend running",
             "upload_endpoint": "/upload",
             "max_file_size_mb": 100,
-            "video_editing_ready": False,
-            "message": "Upload testing backend. Video editing is not implemented."
+            "video_editing_ready": False
         })
 
     def do_POST(self):
@@ -41,10 +40,10 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         content_type = self.headers.get("Content-Type", "")
-        if "multipart/form-data" not in content_type:
-            self.send_json(400, {
-                "error": "Send video and voice as multipart/form-data"
-            })
+        match = re.search(r'boundary="?([^";]+)', content_type)
+
+        if "multipart/form-data" not in content_type or not match:
+            self.send_json(400, {"error": "Invalid multipart upload"})
             return
 
         try:
@@ -52,91 +51,76 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             length = 0
 
-        if length <= 0:
-            self.send_json(400, {"error": "No files received"})
+        if length <= 0 or length > 2 * MAX_FILE_SIZE:
+            self.send_json(413, {"error": "Invalid upload size"})
             return
 
-        if length > 2 * MAX_FILE_SIZE:
-            self.send_json(413, {"error": "Combined upload exceeds limit"})
-            return
+        body = self.rfile.read(length)
+        boundary = b"--" + match.group(1).encode()
+        parts = body.split(boundary)
+        saved = {}
 
-        try:
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={
-                    "REQUEST_METHOD": "POST",
-                    "CONTENT_TYPE": content_type,
-                    "CONTENT_LENGTH": str(length)
-                }
+        for part in parts:
+            part = part.strip(b"\r\n-")
+            if b"\r\n\r\n" not in part:
+                continue
+
+            header, data = part.split(b"\r\n\r\n", 1)
+            data = data.rstrip(b"\r\n")
+            header_text = header.decode("utf-8", errors="ignore")
+
+            field_match = re.search(
+                r'name="(video|voice)"', header_text
+            )
+            file_match = re.search(
+                r'filename="([^"]*)"', header_text
             )
 
-            saved = {}
+            if not field_match or not file_match:
+                continue
 
-            for field in ("video", "voice"):
-                if field not in form:
-                    self.send_json(400, {
-                        "error": f"Missing {field} file"
-                    })
-                    return
+            field = field_match.group(1)
+            original_name = os.path.basename(file_match.group(1))
+            ext = os.path.splitext(original_name)[1].lower()
 
-                item = form[field]
-                if isinstance(item, list):
-                    item = item[0]
+            allowed = {
+                "video": {".mp4", ".mov", ".mkv", ".webm"},
+                "voice": {".mp3", ".wav", ".m4a", ".ogg"}
+            }
 
-                if not item.filename:
-                    self.send_json(400, {
-                        "error": f"No {field} filename supplied"
-                    })
-                    return
+            if ext not in allowed[field]:
+                self.send_json(400, {
+                    "error": f"Unsupported {field} file type"
+                })
+                return
 
-                data = item.file.read(MAX_FILE_SIZE + 1)
+            if len(data) > MAX_FILE_SIZE:
+                self.send_json(413, {"error": "File too large"})
+                return
 
-                if len(data) > MAX_FILE_SIZE:
-                    self.send_json(413, {
-                        "error": f"{field} file exceeds 100 MB"
-                    })
-                    return
+            filename = f"{uuid.uuid4().hex}_{field}{ext}"
+            filepath = os.path.join(UPLOAD_DIR, filename)
 
-                ext = os.path.splitext(item.filename)[1].lower()
-                if field == "video" and ext not in (
-                    ".mp4", ".mov", ".mkv", ".webm"
-                ):
-                    self.send_json(400, {
-                        "error": "Video must be MP4, MOV, MKV, or WEBM"
-                    })
-                    return
+            with open(filepath, "wb") as f:
+                f.write(data)
 
-                if field == "voice" and ext not in (
-                    ".mp3", ".wav", ".m4a", ".ogg"
-                ):
-                    self.send_json(400, {
-                        "error": "Voice must be MP3, WAV, M4A, or OGG"
-                    })
-                    return
+            saved[field] = {
+                "filename": filename,
+                "size_bytes": len(data)
+            }
 
-                filename = f"{uuid.uuid4().hex}_{field}{ext}"
-                path = os.path.join(UPLOAD_DIR, filename)
-
-                with open(path, "wb") as output:
-                    output.write(data)
-
-                saved[field] = {
-                    "filename": filename,
-                    "size_bytes": len(data)
-                }
-
-            self.send_json(200, {
-                "success": True,
-                "message": "Files uploaded to temporary server storage.",
-                "files": saved,
-                "video_editing_ready": False
+        if "video" not in saved or "voice" not in saved:
+            self.send_json(400, {
+                "error": "Both video and voice files are required"
             })
+            return
 
-        except Exception:
-            self.send_json(500, {
-                "error": "Upload failed. Try smaller files."
-            })
+        self.send_json(200, {
+            "success": True,
+            "message": "Files uploaded to temporary storage",
+            "files": saved,
+            "video_editing_ready": False
+        })
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
